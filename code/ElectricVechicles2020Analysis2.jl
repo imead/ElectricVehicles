@@ -50,8 +50,10 @@ GasPricesUS = @pipe GasPricesUS |>
              end
 
 ## Import number of EV registrations per state
-Registrationdf = DataFrame(XLSX.readtable("data/10962-ev-registration-counts-by-state_123120.xlsx", "Condensed")...)
+Registrationdf = DataFrame(XLSX.readtable("data/10962-ev-registration-counts-by-state_123120.xlsx", "Condensed"))
 
+# Add year data collected
+insertcols!(Registrationdf, 3, :Year => 2020)
 
 ## Left join Registration data to gas price data
-FuelRegCombined = leftjoin(Registrationdf, GasPricesUS, on = :State)
+FuelRegCombined = leftjoin(GasPricesUS, Registrationdf, on = [:State, :Year])
