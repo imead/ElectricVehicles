@@ -1,3 +1,9 @@
+## Aims for this analysis are to:
+## 1) Complete a simple analysis with visualization on electric vechicles
+##    in the US.
+## 2) Learn to leverage Julia for basic data joins, data manipulation, and
+##    vizualization capability.
+## Using Julia v1.7 and Quarto 0.9.2  
 
 ## Packages required for analysis
 using DataFrames
@@ -5,6 +11,8 @@ using CSV
 using Pipe
 using DataFramesMeta
 using XLSX
+using PlotlyJS
+using Statistics
 
 ## Load in the CSVs containing data for each of the states
 californiadf = DataFrame.(CSV.File.("data/California_All_Grades_All_Formulations_Retail_Gasoline_Prices.csv"; skipto=6, header=["Year", "GasPrices"]))
@@ -57,3 +65,31 @@ insertcols!(Registrationdf, 3, :Year => 2020)
 
 ## Left join Registration data to gas price data
 FuelRegCombined = leftjoin(GasPricesUS, Registrationdf, on = [:State, :Year])
+
+## Rename Registration count column to remove spaces, XLSX.jl lacks normalize option
+rename!(FuelRegCombined,:"Registration Count" => :RegistrationCount)
+
+## Bar chart looking at EV registrations by state
+## Using PlotlyJS instead of CairoMakie, because of how dataframes are handled
+registration_bar = plot(
+    [bar(FuelRegCombined, x=:State, y=:RegistrationCount, marker_color="gray", text=:RegistrationCount,
+    textposition="outside", hovertext=" ")],
+    Layout(title="EV Registrations per State in 2020", yaxis_title_text="Registrations",
+    xaxis_title_text="State", font_family="Arial", xaxis_categoryorder="total descending")
+    )
+
+## Trend graph examining gas prices by state over time.
+plot(sort(FuelRegCombined, :Year), kind="scatter", mode="lines+markers", x=:Year, y=:GasPrices,
+    group=:State,
+    Layout(title="Fuel Prices Over Time"))
+
+## Remove State column, then group by PADD Region and Year, averaging the state prices
+## by Region and Year.
+summaryregPADD = select(FuelRegCombined, Not(:State))
+summaryregPADD = groupby(summaryregPADD, [:PADDReg, :Year])
+summaryregPADD = combine(summaryregPADD, [:GasPrices,:RegistrationCount] .=> mean; renamecols=false)
+
+## Aggregated fuel prices by region, line graph.
+plot(sort(summaryregPADD, :Year), kind="scatter", mode="lines+markers", x=:Year, y=:GasPrices,
+    group=:PADDReg,
+    Layout(title="Fuel Prices Over Time by Region"))
