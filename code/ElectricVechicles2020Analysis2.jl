@@ -89,7 +89,32 @@ summaryregPADD = select(FuelRegCombined, Not(:State))
 summaryregPADD = groupby(summaryregPADD, [:PADDReg, :Year])
 summaryregPADD = combine(summaryregPADD, [:GasPrices,:RegistrationCount] .=> mean; renamecols=false)
 
+## add new column to allow for plot to highlight the two highest fuel prices
+summaryregPADDend = @pipe summaryregPADD |>
+             select(_, :PADDReg, :GasPrices, :Year) |>
+             @eachrow _ begin
+                 @newcol RegionType::Vector{String}
+                 :RegionType = :PADDReg == "West Coast" ? "Higher Regions" :
+                         :PADDReg == "Central Atlantic" ? "Higher Regions" :
+                         "Lower Regions"
+             end
+
 ## Aggregated fuel prices by region, line graph.
 plot(sort(summaryregPADD, :Year), kind="scatter", mode="lines+markers", x=:Year, y=:GasPrices,
+    group=:PADDReg,
+    Layout(title="Fuel Prices Over Time by Region"))
+
+## Adding different styling for the two regions to highlight
+PADD_trace_1 = summaryregPADDend[summaryregPADDend.RegionType .=="Higher Regions",:]
+PADD_trace_2 = summaryregPADDend[summaryregPADDend.RegionType .=="Lower Regions",:]
+
+trace1 = scatter(sort(PADD_trace_1, :Year), x=:Year, y=:GasPrices, 
+    mode="lines+markers", name="Higher Regions")
+trace2 = scatter(sort(PADD_trace_2, :Year), x=:Year, y=:GasPrices,
+    mode="lines+markers", name="Lower Regions")
+
+plot([trace1, trace2],group=:PADDReg)
+
+plot(sort(summaryregPADDend, :Year), kind="scatter", mode="lines+markers", x=:Year, y=:GasPrices,
     group=:PADDReg,
     Layout(title="Fuel Prices Over Time by Region"))
