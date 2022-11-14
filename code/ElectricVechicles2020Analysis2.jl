@@ -105,16 +105,21 @@ plot(sort(summaryregPADD, :Year), kind="scatter", mode="lines+markers", x=:Year,
     Layout(title="Fuel Prices Over Time by Region"))
 
 ## Adding different styling for the two regions to highlight
-PADD_trace_1 = summaryregPADDend[summaryregPADDend.RegionType .=="Higher Regions",:]
-PADD_trace_2 = summaryregPADDend[summaryregPADDend.RegionType .=="Lower Regions",:]
+regionhighlight = select(summaryregPADDend, Not(:PADDReg))
+regionhighlight = groupby(regionhighlight, [:RegionType, :Year])
+regionhighlight = combine(regionhighlight, [:GasPrices] .=> mean; renamecols=false)
 
-trace1 = scatter(sort(PADD_trace_1, :Year), x=:Year, y=:GasPrices, 
-    mode="lines+markers", name="Higher Regions")
-trace2 = scatter(sort(PADD_trace_2, :Year), x=:Year, y=:GasPrices,
-    mode="lines+markers", name="Lower Regions")
+plot(sort(regionhighlight, :Year), kind="scatter", mode="lines+markers", x=:Year, y=:GasPrices,
+    group=:RegionType,
+    Layout(title="Fuel Prices Over Time by Higher Regions vs Lower Regions Averaged"))
 
-plot([trace1, trace2],group=:PADDReg)
+## Filter only for 2020 when registration and gas prices overlap
+registrationsubset = filter(:Year => ==(2020), FuelRegCombined)
+registrationsubset
 
-plot(sort(summaryregPADDend, :Year), kind="scatter", mode="lines+markers", x=:Year, y=:GasPrices,
-    group=:PADDReg,
-    Layout(title="Fuel Prices Over Time by Region"))
+## scatterplot with registration number of EVs by Gas Prices.
+plot(registrationsubset, mode="markers+text", x=:GasPrices, y=:RegistrationCount, color=:State,
+    text=:State, textposition="top left",
+    Layout(title="States State State", yaxis_title_text="Number of EVs Registered",
+    xaxis_title_text="Gas Price (Dollars)", font_family="Arial", xaxis_tickprefix = '$'))
+    
